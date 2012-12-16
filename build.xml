@@ -1,0 +1,147 @@
+<project name="PhpParser" basedir="." default="help">
+
+    <!-- PROPERTIES *************************************************************-->
+
+    <!-- java/javac properties -->
+    <property name="src.dir" value="src"/>
+    <property name="src.project.dir" value="${src.dir}/project"/>
+    <property name="src.spec.dir" value="${src.dir}/spec"/>
+    <property name="src.jflex.dir" value="${src.dir}/JFlex"/>
+    <property name="src.cup.dir" value="${src.dir}/java_cup"/>
+
+    <property name="build.dir" value="build"/>
+    <property name="build.java.dir" value="${build.dir}/java"/>
+    <property name="build.class.dir" value="${build.dir}/class"/>
+
+    <property name="lexparse.package" value="at.ac.tuwien.infosys.www.phpparser"/>
+    <property name="lexparse.dir" value="${build.java.dir}/at/ac/tuwien/infosys/www/phpparser"/>
+
+    <property name="javadoc.dir" value="doc/html"/>
+    <property name="javadoc.lexparse.dir" value="${javadoc.dir}/phpparser"/>
+ 
+    <!-- lexer generator and generated lexer -->
+    <property name="lexgen.main" value="JFlex.Main"/>
+    <property name="lexgen.input" value="${src.spec.dir}/php.jflex"/>
+    <!-- the lexer name is specified with the %class option in the input file -->
+    <property name="lexer.name" value="PhpLexer"/>
+    <property name="lexer.source" value="${lexer.name}.java"/>
+    <property name="lexer.class" value="${lexer.name}.class"/>
+
+    <!-- parser generator and generated parser -->
+    <property name="parsegen.main" value="java_cup.Main"/>
+    <property name="parsegen.input" value="${src.spec.dir}/php.cup"/>
+    <!-- CAUTION: when changing this property, consult the parser generator's input file first -->
+    <property name="parser.name" value="PhpParser"/>
+    <property name="parser.source" value="${parser.name}.java"/>
+    <property name="parser.sym.name" value="PhpSymbols"/>
+    <property name="parser.sym.source" value="${parser.sym.name}.java"/>
+
+    <!-- classpath -->
+    <path id="classpath">
+        <pathelement location="${build.class.dir}"/>
+        <!-- -necessary because of JFlex Messages bundle -->
+        <pathelement location="${src.jflex.dir}"/>
+    </path>
+
+
+    <!-- TARGETS ****************************************************************-->
+
+
+    <!-- compile modified Cup -->
+    <target name="cup">
+        <mkdir dir="${build.class.dir}"/>
+        <javac srcdir="${src.cup.dir}" destdir="${build.class.dir}" debug="on">
+            <classpath refid="classpath"/>
+        </javac>
+    </target>
+
+    <!-- compile modified JFlex -->
+    <target name="jflex">
+        <javac srcdir="${src.jflex.dir}" destdir="${build.class.dir}" debug="on">
+            <classpath refid="classpath"/>
+        </javac>
+    </target>
+
+    <!-- uses the lexer generator to create a Java lexer from the input file -->
+    <target name="lexer.source" depends="cup,jflex">
+        <mkdir dir="${lexparse.dir}"/>
+        <java classname="${lexgen.main}" fork="yes">
+            <arg value="${lexgen.input}"/>
+            <arg value="-d"/>
+            <arg value="${lexparse.dir}"/>
+            <classpath refid="classpath"/>
+        </java>
+    </target>
+
+    <!-- uses the parser generator to create a Java parser from the input file -->
+    <target name="parser.source" depends="cup">
+        <mkdir dir="${lexparse.dir}"/>
+        <java classname="${parsegen.main}" fork="yes">
+            <arg value="-parser"/>
+            <arg value="${parser.name}"/>
+            <arg value="-symbols"/>
+            <arg value="${parser.sym.name}"/>
+            <!-- uncomment the following line for improved performance -->
+            <!-- <arg value="-nopositions"/> -->
+            <arg value="-nonterms"/>
+            <arg value="-expect"/>
+            <arg value="1"/>
+            <arg value="${parsegen.input}"/>
+            <classpath refid="classpath"/>
+        </java>
+        <move file="${basedir}/${parser.source}" todir="${lexparse.dir}"/>
+        <move file="${basedir}/${parser.sym.source}" todir="${lexparse.dir}"/>
+    </target>
+
+    <!-- internal target for Java development-->
+    <!-- doesn't try to generate lexer and parser -->
+    <target name="javac">
+        <mkdir dir="${build.class.dir}"/>
+        <javac destdir="${build.class.dir}" debug="on">
+            <src>
+                <pathelement path="${src.project.dir}"/>
+                <pathelement path="${build.java.dir}"/>
+            </src>
+            <classpath refid="classpath"/>
+        </javac>
+    </target>
+
+    <!-- generates javadoc -->
+    <target name="javadoc" depends="javac">
+        <javadoc destdir="${javadoc.lexparse.dir}" packagenames="${lexparse.package}" Windowtitle="PhpParser 1.0">
+            <sourcepath>
+                <pathelement path="${src.project.dir}"/>
+                <pathelement path="${build.java.dir}"/>
+            </sourcepath>
+            <classpath refid="classpath"/>
+        </javadoc>
+    </target>
+
+    <!-- compiles the project together with the generated lexer and parser -->
+    <target name="build" depends="lexer.source,parser.source,javac,javadoc" description="Builds the whole project.">
+    </target>
+
+    <target name="clean" description="Cleans up.">
+        <delete dir="${build.java.dir}"/>
+        <delete dir="${build.class.dir}"/>
+        <delete dir="${graphs.dir}"/>
+        <delete file="${jar.file}"/>
+    </target>
+
+    <target name="cleanall" depends="clean" description="Cleans up JFlex, Cup and Javadoc as well.">
+        <delete dir="${lib.dir}/JFlex"/>
+        <delete dir="${lib.dir}/java_cup"/>
+        <delete dir="${javadoc.dir}"/>
+    </target>
+
+    <target name="dist">
+        <mkdir dir="dist"/>
+        
+    </target>
+
+    <target name="help">
+        <echo message="You probably want to do 'ant build'. Otherwise, type 'ant -projecthelp' for help."/>
+    </target>
+
+</project>
+

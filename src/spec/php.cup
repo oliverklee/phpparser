@@ -1,0 +1,953 @@
+/*
+ * CUP specification file for PHP
+ * 
+ * Copyright (C) 2005 Nenad Jovanovic
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License. See the file
+ * COPYRIGHT for more information.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ */
+
+
+/*
+
+CAUTION:
+When changing the name of the generated parser class, you have to change all
+references to CUP$<parser name>$<stack|top>
+
+*/
+
+package at.ac.tuwien.infosys.www.phpparser;
+
+import java_cup.runtime.*;
+
+parser code {: 
+
+    // the name of the parsed file
+    private String fileName;
+
+    public void user_init() {
+        // retrieve the name of the parsed file from the lexer
+        this.fileName = ((PhpLexer) getScanner()).getFileName();
+    }
+
+    public String getFileName() {
+        return this.fileName;
+    }
+
+    // override report_error from base class lr_parser
+    public void report_error(String message, Object info) {
+        System.err.println(message);
+        if (info instanceof Symbol) {
+            Symbol infoSym = (Symbol) info;
+            if (infoSym.left != -1) {
+                System.err.println("line: " + infoSym.left);
+            } else {
+                System.err.println("can't determine line number, symbol number is " + infoSym.sym);
+		if (infoSym.sym == PhpSymbols.EOF) {
+                    System.err.println("= EOF symbol; check for things like unclosed string literals");
+                }
+            }
+        }
+    }
+
+    // override report_error from base class lr_parser;
+    // does the same as the original, but doesn't call report_error again
+    public void report_fatal_error(String message, Object info)
+    throws java.lang.Exception {
+        // stop parsing (not really necessary since we throw an exception)
+        done_parsing();
+
+        // throw an exception
+        throw new Exception("Can't recover from previous error(s)");
+    }
+
+:};
+
+action code {:
+
+    private ParseNode createRuleNode(
+        java.util.Stack stack, int top, int prodNumber, String prodName, int prodLength) {
+
+        prodNumber = prodNumber + numTerminals;
+    
+        // System.out.println("Creating rule node: " + prodName + " " + prodNumber);
+        
+        // create a parse node for this rule
+        ParseNode node = new ParseNode(prodNumber, prodName, this.parser.getFileName());
+
+        // connect the new parse node with its children;
+        if (prodLength == 0) {
+        
+            // this is an epsilon production:
+            
+            // create epsilon node (hasn't been done by the lexer)
+            // ParseNode epsilonNode = new ParseNode(PhpSymbols.T_EPSILON, "epsilon", this.parser.getFileName());
+            ParseNode epsilonNode = new ParseNode(PhpSymbols.T_EPSILON, "epsilon", this.parser.getFileName(), "epsilon", -2);
+            // System.out.println("Adding child: epsilon");
+
+            // connect
+            node.addChild(epsilonNode);
+            
+        } else {
+            
+            // this is not an epsilon production:
+
+            // for each child: get its node and connect it
+            for (int i = prodLength - 1; i >= 0; i--) {
+                ParseNode childNode = 
+                    (ParseNode) ((java_cup.runtime.Symbol) stack.elementAt(top - i)).value;
+                // System.out.println("Adding child: " + childNode.getName() + " " + childNode.getSymbol());
+
+                node.addChild(childNode);
+            }
+        
+        }
+        
+        // return the new parse node
+        return node;
+    }
+
+:};
+
+
+/*
+
+Translation of Bison character tokens to named tokens
+*******************************************************
+
+,   T_COMMA
+=   T_ASSIGN
+?   T_QUESTION
+:   T_COLON
+|   T_BITWISE_OR
+^   T_BITWISE_XOR
+&   T_BITWISE_AND
+<   T_IS_SMALLER
+>   T_IS_GREATER
++   T_PLUS
+-   T_MINUS
+.   T_POINT
+*   T_MULT
+/   T_DIV
+%   T_MODULO
+!   T_NOT
+~   T_BITWISE_NOT
+@   T_AT
+[   T_OPEN_RECT_BRACES
+
+additional (not declared in Bison, implicit from Grammar):
+
+{   T_OPEN_CURLY_BRACES
+}   T_CLOSE_CURLY_BRACES
+(   T_OPEN_BRACES
+)   T_CLOSE_BRACES
+;   T_SEMICOLON
+$   T_DOLLAR
+`   T_BACKTICK
+"   T_DOUBLE_QUOTE
+'   T_SINGLE_QUOTE
+]   T_CLOSE_RECT_BRACES
+
+the following terminals were commented out because they aren't used:
+
+T_CLOSE_TAG
+T_OPEN_TAG_WITH_ECHO
+T_COMMENT
+T_WHITESPACE
+T_OPEN_TAG
+T_ML_COMMENT
+
+add a terminal for epsilon (needed for parse tree construction)
+T_EPSILON
+
+*/
+
+
+
+terminal ParseNode T_INCLUDE, T_INCLUDE_ONCE, T_EVAL, T_REQUIRE, T_REQUIRE_ONCE;
+terminal ParseNode T_COMMA;
+terminal ParseNode T_LOGICAL_OR;
+terminal ParseNode T_LOGICAL_XOR;
+terminal ParseNode T_LOGICAL_AND;
+terminal ParseNode T_PRINT;
+terminal ParseNode T_ASSIGN, T_PLUS_EQUAL, T_MINUS_EQUAL, T_MUL_EQUAL, T_DIV_EQUAL, T_CONCAT_EQUAL, T_MOD_EQUAL, T_AND_EQUAL, T_OR_EQUAL, T_XOR_EQUAL, T_SL_EQUAL, T_SR_EQUAL;
+terminal ParseNode T_QUESTION, T_COLON;
+terminal ParseNode T_BOOLEAN_OR;
+terminal ParseNode T_BOOLEAN_AND;
+terminal ParseNode T_BITWISE_OR;
+terminal ParseNode T_BITWISE_XOR;
+terminal ParseNode T_BITWISE_AND;
+terminal ParseNode T_IS_EQUAL, T_IS_NOT_EQUAL, T_IS_IDENTICAL, T_IS_NOT_IDENTICAL;
+terminal ParseNode T_IS_SMALLER, T_IS_SMALLER_OR_EQUAL, T_IS_GREATER, T_IS_GREATER_OR_EQUAL;
+terminal ParseNode T_SL, T_SR;
+terminal ParseNode T_PLUS, T_MINUS, T_POINT;
+terminal ParseNode T_MULT, T_DIV, T_MODULO;
+terminal ParseNode T_NOT, T_BITWISE_NOT, T_INC, T_DEC, T_INT_CAST, T_DOUBLE_CAST, T_STRING_CAST, T_ARRAY_CAST, T_OBJECT_CAST, T_BOOL_CAST, T_UNSET_CAST, T_AT;
+terminal ParseNode T_OPEN_RECT_BRACES;
+terminal ParseNode T_NEW;
+terminal ParseNode T_EXIT;
+terminal ParseNode T_IF;
+terminal ParseNode T_ELSEIF;
+terminal ParseNode T_ELSE;
+terminal ParseNode T_ENDIF;
+terminal ParseNode T_LNUMBER;
+terminal ParseNode T_DNUMBER;
+terminal ParseNode T_STRING;
+terminal ParseNode T_STRING_VARNAME;
+terminal ParseNode T_VARIABLE;
+terminal ParseNode T_NUM_STRING;
+terminal ParseNode T_INLINE_HTML;
+terminal ParseNode T_CHARACTER;
+terminal ParseNode T_BAD_CHARACTER;
+terminal ParseNode T_ENCAPSED_AND_WHITESPACE;
+terminal ParseNode T_CONSTANT_ENCAPSED_STRING;
+terminal ParseNode T_ECHO;
+terminal ParseNode T_DO;
+terminal ParseNode T_WHILE;
+terminal ParseNode T_ENDWHILE;
+terminal ParseNode T_FOR;
+terminal ParseNode T_ENDFOR;
+terminal ParseNode T_FOREACH;
+terminal ParseNode T_ENDFOREACH;
+terminal ParseNode T_DECLARE;
+terminal ParseNode T_ENDDECLARE;
+terminal ParseNode T_AS;
+terminal ParseNode T_SWITCH;
+terminal ParseNode T_ENDSWITCH;
+terminal ParseNode T_CASE;
+terminal ParseNode T_DEFAULT;
+terminal ParseNode T_BREAK;
+terminal ParseNode T_CONTINUE;
+terminal ParseNode T_OLD_FUNCTION;
+terminal ParseNode T_FUNCTION;
+terminal ParseNode T_CONST;
+terminal ParseNode T_RETURN;
+terminal ParseNode T_USE;
+terminal ParseNode T_GLOBAL;
+terminal ParseNode T_STATIC;
+terminal ParseNode T_VAR;
+terminal ParseNode T_UNSET;
+terminal ParseNode T_ISSET;
+terminal ParseNode T_EMPTY;
+terminal ParseNode T_CLASS;
+terminal ParseNode T_EXTENDS;
+terminal ParseNode T_OBJECT_OPERATOR;
+terminal ParseNode T_DOUBLE_ARROW;
+terminal ParseNode T_LIST;
+terminal ParseNode T_ARRAY;
+terminal ParseNode T_CLASS_C;
+terminal ParseNode T_FUNC_C;
+terminal ParseNode T_LINE;
+terminal ParseNode T_FILE;
+// terminal ParseNode T_COMMENT;
+// terminal ParseNode T_ML_COMMENT;
+// terminal ParseNode T_OPEN_TAG;
+// terminal ParseNode T_OPEN_TAG_WITH_ECHO;
+// terminal ParseNode T_CLOSE_TAG;
+// terminal ParseNode T_WHITESPACE;
+terminal ParseNode T_START_HEREDOC;
+terminal ParseNode T_END_HEREDOC;
+terminal ParseNode T_DOLLAR_OPEN_CURLY_BRACES;
+terminal ParseNode T_CURLY_OPEN;
+terminal ParseNode T_PAAMAYIM_NEKUDOTAYIM;
+
+terminal ParseNode T_OPEN_CURLY_BRACES;
+terminal ParseNode T_CLOSE_CURLY_BRACES;
+terminal ParseNode T_OPEN_BRACES;
+terminal ParseNode T_CLOSE_BRACES;
+terminal ParseNode T_SEMICOLON;
+terminal ParseNode T_DOLLAR;
+terminal ParseNode T_BACKTICK;
+terminal ParseNode T_DOUBLE_QUOTE;
+terminal ParseNode T_SINGLE_QUOTE;
+terminal ParseNode T_CLOSE_RECT_BRACES;
+
+terminal ParseNode T_EPSILON;
+
+non terminal ParseNode S;
+non terminal ParseNode top_statement_list;
+non terminal ParseNode top_statement;
+non terminal ParseNode inner_statement_list;
+non terminal ParseNode inner_statement;
+non terminal ParseNode statement;
+non terminal ParseNode unticked_statement;
+non terminal ParseNode unset_variables;
+non terminal ParseNode unset_variable;
+non terminal ParseNode use_filename;
+non terminal ParseNode declaration_statement;
+non terminal ParseNode unticked_declaration_statement;
+non terminal ParseNode foreach_optional_arg;
+non terminal ParseNode for_statement;
+non terminal ParseNode foreach_statement;
+non terminal ParseNode declare_statement;
+non terminal ParseNode declare_list;
+non terminal ParseNode switch_case_list;
+non terminal ParseNode case_list;
+non terminal ParseNode case_separator;
+non terminal ParseNode while_statement;
+non terminal ParseNode elseif_list;
+non terminal ParseNode new_elseif_list;
+non terminal ParseNode else_single;
+non terminal ParseNode new_else_single;
+non terminal ParseNode parameter_list;
+non terminal ParseNode non_empty_parameter_list;
+non terminal ParseNode function_call_parameter_list;
+non terminal ParseNode non_empty_function_call_parameter_list;
+non terminal ParseNode global_var_list;
+non terminal ParseNode global_var;
+non terminal ParseNode static_var_list;
+non terminal ParseNode class_statement_list;
+non terminal ParseNode class_statement;
+non terminal ParseNode is_reference;
+non terminal ParseNode class_variable_decleration;
+non terminal ParseNode echo_expr_list;
+non terminal ParseNode for_expr;
+non terminal ParseNode non_empty_for_expr;
+non terminal ParseNode expr_without_variable;
+non terminal ParseNode function_call;
+non terminal ParseNode static_or_variable_string;
+non terminal ParseNode exit_expr;
+non terminal ParseNode ctor_arguments;
+non terminal ParseNode common_scalar;
+non terminal ParseNode static_scalar;
+non terminal ParseNode scalar;
+non terminal ParseNode static_array_pair_list;
+non terminal ParseNode possible_comma;
+non terminal ParseNode non_empty_static_array_pair_list;
+non terminal ParseNode expr;
+non terminal ParseNode r_cvar;
+non terminal ParseNode w_cvar;
+non terminal ParseNode rw_cvar;
+non terminal ParseNode cvar;
+non terminal ParseNode cvar_without_objects;
+non terminal ParseNode reference_variable;
+non terminal ParseNode compound_variable;
+non terminal ParseNode dim_offset;
+non terminal ParseNode ref_list;
+non terminal ParseNode object_property;
+non terminal ParseNode object_dim_list;
+non terminal ParseNode variable_name;
+non terminal ParseNode simple_indirect_reference;
+non terminal ParseNode assignment_list;
+non terminal ParseNode assignment_list_element;
+non terminal ParseNode array_pair_list;
+non terminal ParseNode non_empty_array_pair_list;
+non terminal ParseNode encaps_list;
+non terminal ParseNode encaps_var;
+non terminal ParseNode encaps_var_offset;
+non terminal ParseNode internal_functions_in_yacc;
+non terminal ParseNode isset_variables;
+
+
+precedence left T_INCLUDE, T_INCLUDE_ONCE, T_EVAL, T_REQUIRE, T_REQUIRE_ONCE;
+precedence left T_COMMA;
+precedence left T_LOGICAL_OR;
+precedence left T_LOGICAL_XOR;
+precedence left T_LOGICAL_AND;
+precedence right T_PRINT;
+precedence left T_ASSIGN, T_PLUS_EQUAL, T_MINUS_EQUAL, T_MUL_EQUAL, T_DIV_EQUAL, T_CONCAT_EQUAL, T_MOD_EQUAL, T_AND_EQUAL, T_OR_EQUAL, T_XOR_EQUAL, T_SL_EQUAL, T_SR_EQUAL;
+precedence left T_QUESTION, T_COLON;
+precedence left T_BOOLEAN_OR;
+precedence left T_BOOLEAN_AND;
+precedence left T_BITWISE_OR;
+precedence left T_BITWISE_XOR;
+precedence left T_BITWISE_AND;
+precedence nonassoc T_IS_EQUAL, T_IS_NOT_EQUAL, T_IS_IDENTICAL, T_IS_NOT_IDENTICAL;
+precedence nonassoc T_IS_SMALLER, T_IS_SMALLER_OR_EQUAL, T_IS_GREATER, T_IS_GREATER_OR_EQUAL;
+precedence left T_SL, T_SR;
+precedence left T_PLUS, T_MINUS, T_POINT;
+precedence left T_MULT, T_DIV, T_MODULO;
+precedence right T_NOT, T_BITWISE_NOT, T_INC, T_DEC, T_INT_CAST, T_DOUBLE_CAST, T_STRING_CAST, T_ARRAY_CAST, T_OBJECT_CAST, T_BOOL_CAST, T_UNSET_CAST, T_AT;
+precedence right T_OPEN_RECT_BRACES;
+precedence nonassoc T_NEW;
+precedence left T_ELSEIF;
+precedence left T_ELSE;
+precedence left T_ENDIF;
+
+
+
+
+
+
+S ::=
+	top_statement_list {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+top_statement_list ::=
+		top_statement_list:l1 top_statement:l2 {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :} 
+;
+
+
+top_statement ::=
+		statement {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	declaration_statement {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+inner_statement_list ::=
+		inner_statement_list inner_statement {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+inner_statement ::=
+		statement {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	declaration_statement {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+statement ::=
+		unticked_statement {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+unticked_statement ::=
+		T_OPEN_CURLY_BRACES inner_statement_list T_CLOSE_CURLY_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_IF T_OPEN_BRACES expr T_CLOSE_BRACES statement elseif_list else_single {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_IF T_OPEN_BRACES expr T_CLOSE_BRACES T_COLON inner_statement_list new_elseif_list new_else_single T_ENDIF T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_WHILE T_OPEN_BRACES expr  T_CLOSE_BRACES while_statement {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_DO statement T_WHILE T_OPEN_BRACES expr T_CLOSE_BRACES T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_FOR T_OPEN_BRACES for_expr T_SEMICOLON for_expr T_SEMICOLON for_expr T_CLOSE_BRACES for_statement {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_SWITCH T_OPEN_BRACES expr T_CLOSE_BRACES	switch_case_list {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_BREAK T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_BREAK expr T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_CONTINUE T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_CONTINUE expr T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_RETURN T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_RETURN expr_without_variable T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_RETURN cvar T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_GLOBAL global_var_list T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_STATIC static_var_list T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_ECHO echo_expr_list T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_INLINE_HTML {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_USE use_filename T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_UNSET T_OPEN_BRACES unset_variables T_CLOSE_BRACES T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_FOREACH T_OPEN_BRACES w_cvar T_AS w_cvar foreach_optional_arg T_CLOSE_BRACES foreach_statement  {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_FOREACH T_OPEN_BRACES expr_without_variable T_AS w_cvar foreach_optional_arg T_CLOSE_BRACES foreach_statement {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_DECLARE T_OPEN_BRACES declare_list T_CLOSE_BRACES declare_statement  {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+unset_variables ::=
+		unset_variable {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	unset_variables T_COMMA unset_variable {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+unset_variable ::=
+		cvar  {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+use_filename ::=
+		T_CONSTANT_ENCAPSED_STRING {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_OPEN_BRACES T_CONSTANT_ENCAPSED_STRING T_CLOSE_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+declaration_statement ::=
+		unticked_declaration_statement {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+unticked_declaration_statement ::=
+		T_FUNCTION is_reference T_STRING T_OPEN_BRACES parameter_list T_CLOSE_BRACES T_OPEN_CURLY_BRACES inner_statement_list T_CLOSE_CURLY_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_OLD_FUNCTION is_reference T_STRING parameter_list T_OPEN_BRACES inner_statement_list T_CLOSE_BRACES T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_CLASS T_STRING  T_OPEN_CURLY_BRACES class_statement_list T_CLOSE_CURLY_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_CLASS T_STRING T_EXTENDS T_STRING T_OPEN_CURLY_BRACES class_statement_list T_CLOSE_CURLY_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+foreach_optional_arg ::=
+		/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_DOUBLE_ARROW w_cvar  {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+for_statement ::=
+		statement {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_COLON inner_statement_list T_ENDFOR T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+foreach_statement ::=
+		statement {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_COLON inner_statement_list T_ENDFOREACH T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+declare_statement ::=
+		statement {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_COLON inner_statement_list T_ENDDECLARE T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+declare_list ::=
+		T_STRING T_ASSIGN static_scalar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	declare_list T_COMMA T_STRING T_ASSIGN static_scalar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+switch_case_list ::=
+		T_OPEN_CURLY_BRACES case_list T_CLOSE_CURLY_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_OPEN_CURLY_BRACES T_SEMICOLON case_list T_CLOSE_CURLY_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_COLON case_list T_ENDSWITCH T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_COLON T_SEMICOLON case_list T_ENDSWITCH T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+case_list ::=
+		/* empty */	 {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	case_list T_CASE expr case_separator inner_statement_list  {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	case_list T_DEFAULT case_separator inner_statement_list  {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+case_separator ::=
+		T_COLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+while_statement ::=
+		statement {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_COLON inner_statement_list T_ENDWHILE T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+
+elseif_list ::=
+		/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	elseif_list T_ELSEIF T_OPEN_BRACES expr T_CLOSE_BRACES statement {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :} 
+;
+
+
+new_elseif_list ::=
+		/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	new_elseif_list T_ELSEIF T_OPEN_BRACES expr T_CLOSE_BRACES T_COLON inner_statement_list {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :} 
+;
+
+
+else_single ::=
+		/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_ELSE statement {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+new_else_single ::=
+		/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_ELSE T_COLON inner_statement_list {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+parameter_list ::= 
+		non_empty_parameter_list {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+non_empty_parameter_list ::=
+		T_VARIABLE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_BITWISE_AND T_VARIABLE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_CONST T_VARIABLE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_VARIABLE T_ASSIGN static_scalar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	non_empty_parameter_list T_COMMA T_VARIABLE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	non_empty_parameter_list T_COMMA T_BITWISE_AND T_VARIABLE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	non_empty_parameter_list T_COMMA T_CONST T_VARIABLE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	non_empty_parameter_list T_COMMA T_VARIABLE T_ASSIGN static_scalar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+function_call_parameter_list ::=
+		non_empty_function_call_parameter_list {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+non_empty_function_call_parameter_list ::=
+		expr_without_variable {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_BITWISE_AND w_cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	non_empty_function_call_parameter_list T_COMMA expr_without_variable {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	non_empty_function_call_parameter_list T_COMMA cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	non_empty_function_call_parameter_list T_COMMA T_BITWISE_AND w_cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+global_var_list ::=
+		global_var_list T_COMMA global_var {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	global_var {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+global_var ::=
+		T_VARIABLE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_DOLLAR r_cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_DOLLAR T_OPEN_CURLY_BRACES expr T_CLOSE_CURLY_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+static_var_list ::=
+		static_var_list T_COMMA T_VARIABLE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	static_var_list T_COMMA T_VARIABLE T_ASSIGN static_scalar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_VARIABLE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_VARIABLE T_ASSIGN static_scalar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+
+;
+
+
+class_statement_list ::=
+		class_statement_list class_statement {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+class_statement ::=
+		T_VAR class_variable_decleration T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_FUNCTION is_reference T_STRING  T_OPEN_BRACES parameter_list T_CLOSE_BRACES T_OPEN_CURLY_BRACES inner_statement_list T_CLOSE_CURLY_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_OLD_FUNCTION is_reference T_STRING parameter_list T_OPEN_BRACES inner_statement_list T_CLOSE_BRACES T_SEMICOLON {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+is_reference ::=
+		/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_BITWISE_AND {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+class_variable_decleration ::=
+		class_variable_decleration T_COMMA T_VARIABLE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	class_variable_decleration T_COMMA T_VARIABLE T_ASSIGN static_scalar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_VARIABLE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_VARIABLE T_ASSIGN static_scalar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+echo_expr_list ::=	
+	|	echo_expr_list T_COMMA expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+for_expr ::=
+		/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	non_empty_for_expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+non_empty_for_expr ::=
+		non_empty_for_expr T_COMMA expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+expr_without_variable ::=	
+		T_LIST T_OPEN_BRACES assignment_list T_CLOSE_BRACES T_ASSIGN expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	cvar T_ASSIGN expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	cvar T_ASSIGN T_BITWISE_AND w_cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	cvar T_ASSIGN T_BITWISE_AND function_call {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	cvar T_ASSIGN T_BITWISE_AND T_NEW static_or_variable_string ctor_arguments {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_NEW static_or_variable_string ctor_arguments {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	cvar T_PLUS_EQUAL expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :} 
+	|	cvar T_MINUS_EQUAL expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	cvar T_MUL_EQUAL expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	cvar T_DIV_EQUAL expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	cvar T_CONCAT_EQUAL expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	cvar T_MOD_EQUAL expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	cvar T_AND_EQUAL expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	cvar T_OR_EQUAL expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	cvar T_XOR_EQUAL expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	cvar T_SL_EQUAL expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	cvar T_SR_EQUAL expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	rw_cvar T_INC {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_INC rw_cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	rw_cvar T_DEC {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_DEC rw_cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_BOOLEAN_OR expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_BOOLEAN_AND expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_LOGICAL_OR expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_LOGICAL_AND expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_LOGICAL_XOR expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_BITWISE_OR expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_BITWISE_AND expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_BITWISE_XOR expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_POINT expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_PLUS expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_MINUS expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_MULT expr  {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_DIV expr  {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_MODULO expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :} 
+	| 	expr T_SL expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :} 
+	|	expr T_SR expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_PLUS expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :} 
+	|	T_MINUS expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_NOT expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_BITWISE_NOT expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :} 
+	|	expr T_IS_IDENTICAL expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_IS_NOT_IDENTICAL expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_IS_EQUAL expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :} 
+	|	expr T_IS_NOT_EQUAL expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :} 
+	|	expr T_IS_SMALLER expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :} 
+	|	expr T_IS_SMALLER_OR_EQUAL expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_IS_GREATER expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_IS_GREATER_OR_EQUAL expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_OPEN_BRACES expr T_CLOSE_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_QUESTION expr T_COLON expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	function_call {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	internal_functions_in_yacc {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_INT_CAST expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_DOUBLE_CAST expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_STRING_CAST expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_ARRAY_CAST expr  {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_OBJECT_CAST expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_BOOL_CAST expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_UNSET_CAST expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_EXIT exit_expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_AT expr  {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	scalar  {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_ARRAY T_OPEN_BRACES array_pair_list T_CLOSE_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_BACKTICK encaps_list T_BACKTICK {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_PRINT expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+function_call ::=
+		T_STRING T_OPEN_BRACES function_call_parameter_list T_CLOSE_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	cvar T_OPEN_BRACES function_call_parameter_list T_CLOSE_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_STRING T_PAAMAYIM_NEKUDOTAYIM static_or_variable_string T_OPEN_BRACES function_call_parameter_list T_CLOSE_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+static_or_variable_string ::=
+		T_STRING {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	r_cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+exit_expr ::=
+		/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_OPEN_BRACES T_CLOSE_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_OPEN_BRACES expr T_CLOSE_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+ctor_arguments ::=
+		/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_OPEN_BRACES function_call_parameter_list T_CLOSE_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+common_scalar ::=
+		T_LNUMBER {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_DNUMBER {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_CONSTANT_ENCAPSED_STRING {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_LINE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_FILE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_CLASS_C {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_FUNC_C {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+static_scalar ::= /* compile-time evaluated scalars */
+		common_scalar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_STRING {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_PLUS static_scalar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_MINUS static_scalar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_ARRAY T_OPEN_BRACES static_array_pair_list T_CLOSE_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+scalar ::=
+		T_STRING {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_STRING_VARNAME {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	common_scalar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_DOUBLE_QUOTE encaps_list T_DOUBLE_QUOTE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :} 
+	|	T_SINGLE_QUOTE encaps_list T_SINGLE_QUOTE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_START_HEREDOC encaps_list T_END_HEREDOC {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+static_array_pair_list ::=
+		/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :} 
+	|	non_empty_static_array_pair_list possible_comma {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}	
+;
+
+possible_comma ::=
+		/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_COMMA {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+non_empty_static_array_pair_list ::=
+		non_empty_static_array_pair_list T_COMMA static_scalar T_DOUBLE_ARROW static_scalar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	non_empty_static_array_pair_list T_COMMA static_scalar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	static_scalar T_DOUBLE_ARROW static_scalar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	static_scalar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+expr ::=
+		r_cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr_without_variable {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+r_cvar ::=
+	cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+w_cvar ::=
+	cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :} 
+;
+
+
+rw_cvar ::=
+	cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :} 
+;
+
+cvar ::=
+		cvar_without_objects {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	cvar_without_objects T_OBJECT_OPERATOR ref_list {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+cvar_without_objects ::=
+		reference_variable {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	simple_indirect_reference reference_variable {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+reference_variable ::=
+		reference_variable T_OPEN_RECT_BRACES dim_offset T_CLOSE_RECT_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :} 
+	|	reference_variable T_OPEN_CURLY_BRACES expr T_CLOSE_CURLY_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	compound_variable {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :} 
+;
+	
+
+compound_variable ::=
+		T_VARIABLE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_DOLLAR T_OPEN_CURLY_BRACES expr T_CLOSE_CURLY_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+dim_offset ::=
+		/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+ref_list ::=
+		object_property {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	ref_list T_OBJECT_OPERATOR  object_property {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+object_property ::=
+		object_dim_list {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	cvar_without_objects {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+object_dim_list ::=
+		object_dim_list T_OPEN_RECT_BRACES dim_offset T_CLOSE_RECT_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	object_dim_list T_OPEN_CURLY_BRACES expr T_CLOSE_CURLY_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	variable_name {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+variable_name ::=
+		T_STRING {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_OPEN_CURLY_BRACES expr T_CLOSE_CURLY_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+simple_indirect_reference ::=
+		T_DOLLAR {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	simple_indirect_reference T_DOLLAR {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+assignment_list ::=
+		assignment_list T_COMMA assignment_list_element {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	assignment_list_element {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+assignment_list_element ::=
+		cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_LIST T_OPEN_BRACES assignment_list T_CLOSE_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+array_pair_list ::=
+		/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	non_empty_array_pair_list possible_comma {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+non_empty_array_pair_list ::=
+		non_empty_array_pair_list T_COMMA expr T_DOUBLE_ARROW expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	non_empty_array_pair_list T_COMMA expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_DOUBLE_ARROW expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	non_empty_array_pair_list T_COMMA expr T_DOUBLE_ARROW T_BITWISE_AND w_cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	non_empty_array_pair_list T_COMMA T_BITWISE_AND w_cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	expr T_DOUBLE_ARROW T_BITWISE_AND w_cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_BITWISE_AND w_cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+encaps_list ::=
+		encaps_list encaps_var {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	encaps_list T_STRING {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	encaps_list T_NUM_STRING {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	encaps_list T_ENCAPSED_AND_WHITESPACE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	encaps_list T_CHARACTER {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	encaps_list T_BAD_CHARACTER {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	encaps_list T_OPEN_RECT_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	encaps_list T_CLOSE_RECT_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	encaps_list T_OPEN_CURLY_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	encaps_list T_CLOSE_CURLY_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	encaps_list T_OBJECT_OPERATOR {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	/* empty */ {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+
+;
+
+
+
+encaps_var ::=
+		T_VARIABLE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_VARIABLE T_OPEN_RECT_BRACES encaps_var_offset T_CLOSE_RECT_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_VARIABLE T_OBJECT_OPERATOR T_STRING {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_DOLLAR_OPEN_CURLY_BRACES expr T_CLOSE_CURLY_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_DOLLAR_OPEN_CURLY_BRACES T_STRING_VARNAME T_OPEN_RECT_BRACES expr T_CLOSE_RECT_BRACES T_CLOSE_CURLY_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_CURLY_OPEN cvar T_CLOSE_CURLY_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+encaps_var_offset ::=
+		T_STRING {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_NUM_STRING {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_VARIABLE {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+
+internal_functions_in_yacc ::=
+		T_ISSET T_OPEN_BRACES isset_variables T_CLOSE_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_EMPTY T_OPEN_BRACES cvar T_CLOSE_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_INCLUDE expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_INCLUDE_ONCE expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_EVAL T_OPEN_BRACES expr T_CLOSE_BRACES {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_REQUIRE expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	T_REQUIRE_ONCE expr {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;
+
+isset_variables ::=
+		cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+	|	isset_variables T_COMMA cvar {: RESULT = createRuleNode(CUP$PhpParser$stack, CUP$PhpParser$top, prodNumber, prodName, prodLength); :}
+;	
+
+
+
+
+
+
+

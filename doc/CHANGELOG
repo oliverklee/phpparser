@@ -1,0 +1,27 @@
+PhpParser 1.0
+***************
+
+Date: July 15, 2005
+
+- Initial Release
+
+PhpParser 1.1
+***************
+
+Date: September 23, 2005
+
+- added method ParseNode.getLinenoLeft
+- ParseNode and ParseTree now implement Serializable
+- changed ParseNode constructors: now also expect the name of the parsed file
+- added ParseNode.getFileName()
+- after constructing a lexer object, it has to be informed about the name of
+  the parsed file (see readme for invocation instructions)
+
+PhpParser 1.2
+**************
+
+Date: July 17, 2006
+
+- fixed bug that raised exception for one-line comment followed by ?>
+- slightly more verbose error output
+- bugfix: epsilon nodes were initialized as non-token nodes, which was wrong
