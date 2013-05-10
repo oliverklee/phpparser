@@ -1,5 +1,4 @@
 <project name="PhpParser" basedir="." default="help">
-
     <!-- PROPERTIES *************************************************************-->
 
     <!-- java/javac properties -->
@@ -18,7 +17,7 @@
 
     <property name="javadoc.dir" value="doc/html"/>
     <property name="javadoc.lexparse.dir" value="${javadoc.dir}/phpparser"/>
- 
+
     <!-- lexer generator and generated lexer -->
     <property name="lexgen.main" value="JFlex.Main"/>
     <property name="lexgen.input" value="${src.spec.dir}/php.jflex"/>
@@ -46,24 +45,21 @@
 
     <!-- TARGETS ****************************************************************-->
 
-
-    <!-- compile modified Cup -->
-    <target name="cup">
+    <target name="cup" description="Compiles the modified Cup.">
         <mkdir dir="${build.class.dir}"/>
         <javac srcdir="${src.cup.dir}" destdir="${build.class.dir}" debug="on">
             <classpath refid="classpath"/>
         </javac>
     </target>
 
-    <!-- compile modified JFlex -->
-    <target name="jflex">
+    <target name="jflex" description="Compiles the modified JFlex.">
         <javac srcdir="${src.jflex.dir}" destdir="${build.class.dir}" debug="on">
             <classpath refid="classpath"/>
         </javac>
     </target>
 
-    <!-- uses the lexer generator to create a Java lexer from the input file -->
-    <target name="lexer.source" depends="cup,jflex">
+    <target name="lexer.source" depends="cup,jflex"
+        description="Uses the lexer generator to create a Java lexer from the input file.">
         <mkdir dir="${lexparse.dir}"/>
         <java classname="${lexgen.main}" fork="yes">
             <arg value="${lexgen.input}"/>
@@ -73,8 +69,8 @@
         </java>
     </target>
 
-    <!-- uses the parser generator to create a Java parser from the input file -->
-    <target name="parser.source" depends="cup">
+    <target name="parser.source" depends="cup"
+        description="Uses the parser generator to create a Java parser from the input file.">
         <mkdir dir="${lexparse.dir}"/>
         <java classname="${parsegen.main}" fork="yes">
             <arg value="-parser"/>
@@ -93,9 +89,8 @@
         <move file="${basedir}/${parser.sym.source}" todir="${lexparse.dir}"/>
     </target>
 
-    <!-- internal target for Java development-->
-    <!-- doesn't try to generate lexer and parser -->
-    <target name="javac">
+    <target name="javac"
+        description="Internal target for Java development. Doesn't try to generate lexer and parser.">
         <mkdir dir="${build.class.dir}"/>
         <javac destdir="${build.class.dir}" debug="on">
             <src>
@@ -106,8 +101,7 @@
         </javac>
     </target>
 
-    <!-- generates javadoc -->
-    <target name="javadoc" depends="javac">
+    <target name="javadoc" depends="javac" description="Generates JavaDoc.">
         <javadoc destdir="${javadoc.lexparse.dir}" packagenames="${lexparse.package}" Windowtitle="PhpParser 1.0">
             <sourcepath>
                 <pathelement path="${src.project.dir}"/>
@@ -117,9 +111,8 @@
         </javadoc>
     </target>
 
-    <!-- compiles the project together with the generated lexer and parser -->
-    <target name="build" depends="lexer.source,parser.source,javac,javadoc" description="Builds the whole project.">
-    </target>
+    <target name="build" depends="lexer.source,parser.source,javac,javadoc"
+        description="Builds the whole project together with the generated lexer and parser."/>
 
     <target name="clean" description="Cleans up.">
         <delete dir="${build.java.dir}"/>
@@ -128,7 +121,7 @@
         <delete file="${jar.file}"/>
     </target>
 
-    <target name="cleanall" depends="clean" description="Cleans up JFlex, Cup and Javadoc as well.">
+    <target name="cleanall" depends="clean" description="Cleans up JFlex, Cup and JavaDoc as well.">
         <delete dir="${lib.dir}/JFlex"/>
         <delete dir="${lib.dir}/java_cup"/>
         <delete dir="${javadoc.dir}"/>
@@ -136,12 +129,9 @@
 
     <target name="dist">
         <mkdir dir="dist"/>
-        
     </target>
 
     <target name="help">
         <echo message="You probably want to do 'ant build'. Otherwise, type 'ant -projecthelp' for help."/>
     </target>
-
 </project>
-
