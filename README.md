@@ -13,6 +13,12 @@ The modifications to JFlex and Cup have been documented in the files inside
 the directory doc/modifications.
 
 
+## Project settings for IntelliJ IDEA
+
+* Project > Language Level: 1.7
+* Modules > Sources: only src/java_cup, src/project, src/jFlex
+
+
 ## Building and cleaning the project with Ant from within Eclipse
 
 1. Project > Properties > Builders
