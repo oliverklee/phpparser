@@ -92,6 +92,12 @@ with building the project.
     - spec
       - specification (input) files for Cup and JFlex
 
+
+## PhpParser and Pixy
+
+PhpParser was developed as a sub-project of the PHP security vulnerability scanner Pixy, which resides [on Github](https://github.com/oliverklee/pixy "Pixy on Github").
+
+
 ## Licenses
 
 * PhpParser: GPL V3
