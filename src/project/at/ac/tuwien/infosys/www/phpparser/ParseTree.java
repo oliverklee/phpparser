@@ -59,8 +59,8 @@ public final class ParseTree implements Serializable {
      *
      * @return an <code>Iterator</code> over the leaf parse nodes
      */
-    public Iterator leafIterator() {
-        LinkedList list = new LinkedList();
+    public Iterator<ParseNode> leafIterator() {
+        LinkedList<ParseNode> list = new LinkedList();
         this.leafIteratorHelper(list, this.root);
 
         return list.iterator();
@@ -72,7 +72,7 @@ public final class ParseTree implements Serializable {
      * @param list the list to which to add leaf nodes
      * @param node root node of the tree for which the leaf nodes shall be added to the given list
      */
-    private void leafIteratorHelper(List list, ParseNode node) {
+    private void leafIteratorHelper(List<ParseNode> list, ParseNode node) {
         // if we've reached a leaf
         if (node.isToken()) {
             list.add(node);
@@ -80,7 +80,7 @@ public final class ParseTree implements Serializable {
         }
 
         // handle successors
-        for (Iterator iterator = node.getChildren().iterator(); iterator.hasNext(); ) {
+        for (Iterator<ParseNode> iterator = node.getChildren().iterator(); iterator.hasNext(); ) {
             ParseNode child = (ParseNode) iterator.next();
             leafIteratorHelper(list, child);
         }

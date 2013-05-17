@@ -51,7 +51,7 @@ public final class ParseNode implements Serializable {
     /**
      * child nodes
      */
-    private List children;
+    private List<ParseNode> children;
 
     /**
      * parent node; available for all nodes except the root of the parse tree
@@ -153,7 +153,7 @@ public final class ParseNode implements Serializable {
      *
      * @return this node's children
      */
-    public List getChildren() {
+    public List<ParseNode> getChildren() {
         return this.children;
     }
 
