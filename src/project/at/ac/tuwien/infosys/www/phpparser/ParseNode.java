@@ -249,6 +249,15 @@ public final class ParseNode implements Serializable {
     }
 
     /**
+     * Gets the file name and the node's line number.
+     *
+     * @return the file name and the node's line number.
+     */
+    public String getLoc() {
+        return this.fileName + ":" + getLinenoLeft();
+    }
+
+    /**
      * Returns this node's ID.
      *
      * @return this node's ID
