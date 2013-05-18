@@ -92,7 +92,7 @@ public final class ParseNode implements Serializable {
         this.symbol = symbol;
         this.name = name;
         this.fileName = fileName;
-        this.children = new ArrayList();
+        this.children = new ArrayList<>();
         this.parent = null;
         this.lexeme = null;
         this.lineNumber = -1;
@@ -113,7 +113,7 @@ public final class ParseNode implements Serializable {
         this.symbol = symbol;
         this.name = name;
         this.fileName = fileName;
-        this.children = Collections.EMPTY_LIST;
+        this.children = Collections.emptyList();
         this.parent = null;
         this.lexeme = lexeme;
         this.lineNumber = lineNumber;
@@ -180,7 +180,7 @@ public final class ParseNode implements Serializable {
             throw new UnsupportedOperationException("Call to getChild for token node " + this.name);
         }
 
-        return (ParseNode) this.children.get(index);
+        return this.children.get(index);
     }
 
     /**

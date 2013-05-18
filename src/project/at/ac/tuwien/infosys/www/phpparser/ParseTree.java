@@ -60,7 +60,7 @@ public final class ParseTree implements Serializable {
      * @return an <code>Iterator</code> over the leaf parse nodes
      */
     public Iterator<ParseNode> leafIterator() {
-        LinkedList<ParseNode> list = new LinkedList();
+        LinkedList<ParseNode> list = new LinkedList<>();
         this.leafIteratorHelper(list, this.root);
 
         return list.iterator();
