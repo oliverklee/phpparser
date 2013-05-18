@@ -80,8 +80,7 @@ public final class ParseTree implements Serializable {
         }
 
         // handle successors
-        for (Iterator<ParseNode> iterator = node.getChildren().iterator(); iterator.hasNext(); ) {
-            ParseNode child = (ParseNode) iterator.next();
+        for (ParseNode child : node.getChildren()) {
             leafIteratorHelper(list, child);
         }
     }
