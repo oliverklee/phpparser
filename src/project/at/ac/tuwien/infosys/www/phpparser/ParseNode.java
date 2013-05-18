@@ -51,7 +51,7 @@ public final class ParseNode implements Serializable {
     /**
      * child nodes
      */
-    private List<ParseNode> children;
+    private final List<ParseNode> children;
 
     /**
      * parent node; available for all nodes except the root of the parse tree
@@ -79,7 +79,7 @@ public final class ParseNode implements Serializable {
     /**
      * whether this node is a token node
      */
-    private boolean isToken;
+    private final boolean isToken;
 
     /**
      * Constructs an interior node.
