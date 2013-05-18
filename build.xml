@@ -47,13 +47,13 @@
 
     <target name="cup" description="Compiles the modified Cup.">
         <mkdir dir="${build.class.dir}"/>
-        <javac srcdir="${src.cup.dir}" destdir="${build.class.dir}" debug="on">
+        <javac srcdir="${src.cup.dir}" destdir="${build.class.dir}" debug="on" includeantruntime="false">
             <classpath refid="classpath"/>
         </javac>
     </target>
 
     <target name="jflex" description="Compiles the modified JFlex.">
-        <javac srcdir="${src.jflex.dir}" destdir="${build.class.dir}" debug="on">
+        <javac srcdir="${src.jflex.dir}" destdir="${build.class.dir}" debug="on" includeantruntime="false">
             <classpath refid="classpath"/>
         </javac>
     </target>
@@ -77,8 +77,6 @@
             <arg value="${parser.name}"/>
             <arg value="-symbols"/>
             <arg value="${parser.sym.name}"/>
-            <!-- uncomment the following line for improved performance -->
-            <!-- <arg value="-nopositions"/> -->
             <arg value="-nonterms"/>
             <arg value="-expect"/>
             <arg value="1"/>
@@ -92,7 +90,7 @@
     <target name="javac"
         description="Internal target for Java development. Doesn't try to generate lexer and parser.">
         <mkdir dir="${build.class.dir}"/>
-        <javac destdir="${build.class.dir}" debug="on">
+        <javac destdir="${build.class.dir}" debug="on" includeantruntime="false">
             <src>
                 <pathelement path="${src.project.dir}"/>
                 <pathelement path="${build.java.dir}"/>
