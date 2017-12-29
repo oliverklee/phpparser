@@ -106,13 +106,6 @@ with building the project.
 PhpParser was developed as a sub-project of the PHP security vulnerability scanner Pixy, which resides [on Github](https://github.com/oliverklee/pixy "Pixy on Github").
 
 
-## Licenses
-
-* PhpParser: GPL V3
-* jFlex: GPL V2
-* Cup: custom license, derived from "Standard ML of New Jersey", GPL-compatible
-* rest: GPL V2
-
 ## Credits
 
 The original author of PhpParser was Nenad Jovanovic, enji@infosys.tuwien.ac.at. The current maintainer is Oliver Klee, pixy@oliverklee.de.
