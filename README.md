@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/oliverklee/phpparser.svg?branch=master)](https://travis-ci.org/oliverklee/phpparser)
 
-PhpParser generates a pure Java parser for PHP programs. Invoking this parser
+<h3>PhpParser</h3> generates a pure Java parser for PHP programs. Invoking this parser
 yields an explicit parse tree suitable for further analysis.
 
 This package is based upon:
