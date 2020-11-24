@@ -1,13 +1,11 @@
 # PhpParser
 
-[![Build Status](https://travis-ci.org/oliverklee/phpparser.svg?branch=master)](https://travis-ci.org/oliverklee/phpparser)
-
 PhpParser generates a pure Java parser for PHP programs. Invoking this parser
 yields an explicit parse tree suitable for further analysis.
 
 This package is based upon:
 
-- [JFlex 1.4.1](http://www.jflex.de/)
+- [JFlex 1.4.1](https://www.jflex.de/)
 - [Cup 0.10k](http://www2.cs.tum.edu/projects/cup/)
 - Grammar and lexer specifications of PHP 4.3.10.
 
